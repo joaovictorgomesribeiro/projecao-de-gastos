@@ -139,9 +139,10 @@
 
 <div class="container">
 
-  <div class="card">
+  <div class="card" id="cardEntradas">
     <h3>Entradas (Receitas)</h3>
     <div class="kpi" id="totalEntradas" style="color: #22c55e;">R$ 0,00</div>
+    <canvas id="graficoEntradas" style="display: none;"></canvas>
   </div>
 
   <div class="card">
@@ -149,9 +150,10 @@
     <div class="kpi" id="totalSaidas" style="color: #ef4444;">R$ 0,00</div>
   </div>
 
-  <div class="card">
-    <h3>Saldo Atual</h3>
-    <div class="kpi" id="saldoAtual" style="color: #3b82f6;">R$ 0,00</div>
+  <div class="card" style="border: 2px solid #3b82f6; box-shadow: 0 4px 15px -3px rgba(59, 130, 246, 0.4);">
+    <h3>Saldo do Mês</h3>
+    <div class="kpi" id="saldoAtual" style="font-size: 38px;">R$ 0,00</div>
+    <small id="percentualGasto" style="color: #94a3b8; margin-top: 5px; font-weight: bold;"></small>
   </div>
 
   <div class="card">
@@ -250,6 +252,7 @@
         });
 
         popularFiltros(dadosGlobais);
+        processarEntradasESaldo(dadosGlobais);
         processarEExibir(dadosGlobais);
         statusEl.innerText = '';
       } else {
@@ -274,18 +277,56 @@
     }
   });
 
+  function processarEntradasESaldo(dados) {
+    const dadosEntradas = dados.filter(d => String(d.classificação || "").toLowerCase() === "entrada");
+    const dadosSaidas = dados.filter(d => ["saída", "saida"].includes(String(d.classificação || "").toLowerCase()));
+
+    const totalEntradas = dadosEntradas.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
+    const totalSaidas = dadosSaidas.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
+    const saldo = totalEntradas - totalSaidas;
+
+    document.getElementById('totalEntradas').innerText = formatarMoeda(totalEntradas);
+    
+    const saldoEl = document.getElementById('saldoAtual');
+    saldoEl.innerText = formatarMoeda(saldo);
+    saldoEl.style.color = saldo >= 0 ? '#22c55e' : '#ef4444';
+
+    const percentualEl = document.getElementById('percentualGasto');
+    if (percentualEl) {
+        if (totalEntradas > 0) {
+            let p = (totalSaidas / totalEntradas) * 100;
+            percentualEl.innerText = `Você gastou ${p.toFixed(1)}% do que ganhou`;
+        } else {
+            percentualEl.innerText = "";
+        }
+    }
+
+    const canvasEntradas = document.getElementById('graficoEntradas');
+    if (totalEntradas > 0) {
+      canvasEntradas.style.display = 'block';
+      const mapaEntradas = {};
+      dadosEntradas.forEach(d => {
+        const chave = d.tipo || "Outros";
+        mapaEntradas[chave] = (mapaEntradas[chave] || 0) + (parseFloat(d.valor) || 0);
+      });
+      renderizarPizza('graficoEntradas', mapaEntradas, 'doughnut');
+    } else {
+      canvasEntradas.style.display = 'none';
+      if (charts['graficoEntradas']) {
+        charts['graficoEntradas'].destroy();
+        delete charts['graficoEntradas'];
+      }
+    }
+  }
+
   function processarEExibir(dados) {
     const entradas = dados.filter(d => String(d.classificação || "").toLowerCase() === "entrada");
     const saidas = dados.filter(d => ["saída", "saida"].includes(String(d.classificação || "").toLowerCase()));
 
     const totalEntradas = entradas.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
     const totalSaidas = saidas.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
-    const saldo = totalEntradas - totalSaidas;
 
-    document.getElementById('totalEntradas').innerText = formatarMoeda(totalEntradas);
     document.getElementById('totalSaidas').innerText = formatarMoeda(totalSaidas);
-    document.getElementById('saldoAtual').innerText = formatarMoeda(saldo);
-    document.getElementById('saldoAtual').style.color = saldo >= 0 ? '#3b82f6' : '#ef4444';
 
     // Saúde Financeira
     let saudeEl = document.getElementById('saudeFinanceira');
