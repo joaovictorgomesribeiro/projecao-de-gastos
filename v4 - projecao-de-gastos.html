@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>V3 - Projeção de Gastos</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    /* Aplicando a paleta de cores solicitada */
+    /* Fundo: #0f172a | Cards/Bordas: #1e293b | Destaques: #3b82f6 | Sucesso: #22c55e | Texto/Branco: #f8fafc */
+
+    body { 
+      margin: 0; 
+      font-family: 'Segoe UI', sans-serif; 
+      background: #0f172a; /* Azul bem escuro */
+      color: #f8fafc; /* Branco Slate */
+    }
+
+    header { 
+      background: #1e293b; /* Cinza azulado */
+      padding: 20px 40px; 
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      position: sticky; 
+      top: 0; 
+      z-index: 100;
+      border-bottom: 2px solid #3b82f6; /* Azul */
+    }
+
+    h1 { margin: 0; font-size: 24px; color: #f8fafc; }
+
+    .container { 
+      padding: 30px 40px; 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+      gap: 20px; 
+    }
+
+    .card { 
+      background: #1e293b; /* Cinza azulado */
+      border-radius: 12px; 
+      padding: 20px; 
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); 
+      max-height: 450px; 
+      overflow-y: auto; 
+      display: flex; 
+      flex-direction: column;
+      border: 1px solid #334155;
+    }
+
+    .card h3 { 
+      margin-top: 0; 
+      font-size: 14px; 
+      color: #3b82f6; /* Azul */
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding-bottom: 10px; 
+      border-bottom: 1px solid #334155;
+    }
+
+    .kpi { 
+      font-size: 32px; 
+      font-weight: bold; 
+      margin: 15px 0; 
+      color: #f8fafc;
+    }
+
+    .full-width { 
+      grid-column: 1 / -1; 
+      max-height: 800px; 
+    }
+
+    .filter-bar { 
+      display: flex; 
+      gap: 15px; 
+      margin-bottom: 20px; 
+      flex-wrap: wrap; 
+      background: #0f172a; /* Azul bem escuro */
+      padding: 15px; 
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+
+    .filter-bar input, 
+    .filter-bar select { 
+      padding: 10px; 
+      background: #1e293b;
+      border: 1px solid #3b82f6;
+      border-radius: 6px; 
+      font-size: 14px; 
+      outline: none; 
+      color: #f8fafc;
+    }
+
+    .filter-bar input::placeholder { color: #94a3b8; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; color: #f8fafc; }
+
+    th { 
+      position: sticky; 
+      top: 0; 
+      background: #3b82f6; /* Azul */
+      color: #f8fafc;
+      padding: 12px; 
+      text-align: left; 
+      z-index: 10; 
+    }
+
+    td { 
+      padding: 12px; 
+      border-bottom: 1px solid #334155; 
+    }
+
+    tr:hover { background: #334155; }
+
+    canvas { width: 100% !important; max-height: 250px; margin-top: 10px; }
+
+    footer { text-align: center; padding: 20px; color: #64748b; }
+    
+    /* Scrollbar customizada */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>📊 Projeção de Gastos</h1>
+  <div id="loadingStatus" style="color: #f59e0b; font-weight: bold; font-size: 14px;"></div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h3>A Pagar (Mês Atual)</h3>
+    <div class="kpi" id="totalSaidas" style="color: #ef4444;">R$ 0,00</div>
+  </div>
+
+  <div class="card">
+    <h3>A Pagar M+1 (Previsão)</h3>
+    <div class="kpi" id="totalProximoMes" style="color: #f59e0b;">R$ 0,00</div>
+    <canvas id="graficoM1"></canvas>
+    <small style="color: #94a3b8; margin-top: 10px;">Parcelas do próximo mês</small>
+  </div>
+
+  <div class="card">
+    <h3>Dívida Total (Futuro)</h3>
+    <div class="kpi" id="totalParcelasFuturas">R$ 0,00</div>
+    <canvas id="graficoParcelas"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Gastos por Tipo</h3>
+    <canvas id="graficoTipo"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Gastos por Instituição</h3>
+    <canvas id="graficoInstituicao"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Top 10 Gastos</h3>
+    <canvas id="graficoDescricao"></canvas>
+  </div>
+
+  <div class="card full-width">
+    <h3>Lista Detalhada de Gastos</h3>
+
+    <div class="filter-bar">
+      <input type="text" id="searchDesc" placeholder="🔎 Buscar por descrição..." onkeyup="aplicarFiltros()">
+      <select id="filterTipo" onchange="aplicarFiltros()">
+        <option value="">Todos os Tipos</option>
+      </select>
+      <select id="filterInst" onchange="aplicarFiltros()">
+        <option value="">Todas Instituições</option>
+      </select>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table id="tabelaGastos">
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Valor</th>
+            <th>Parcela</th>
+            <th>Pagamento</th>
+            <th>Instituição</th>
+            <th>Tipo</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyGastos"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let charts = {};
+  let dadosGlobais = [];
+
+  async function carregarDadosAPI() {
+    const statusEl = document.getElementById('loadingStatus');
+    statusEl.innerText = 'Carregando dados...';
+    
+    try {
+      const response = await fetch('http://localhost/projecao-gastos/api/listar.php', { method: 'GET' });
+      const json = await response.json();
+      
+      if (json.sucesso) {
+        dadosGlobais = json.dados.map(item => {
+          return {
+            'descrição': item.descricao || item.descrição,
+            'valor': item.valor,
+            'parcela': item.parcela,
+            'pagamento': item.pagamento || item.forma_pagamento,
+            'instituição': item.instituicao || item.instituição,
+            'tipo': item.tipo,
+            'classificação': item.classificacao || item.classificação
+          };
+        }).filter(d => ["saída", "saida"].includes(String(d['classificação'] || "").toLowerCase()));
+
+        popularFiltros(dadosGlobais);
+        processarEExibir(dadosGlobais);
+        statusEl.innerText = '';
+      } else {
+        statusEl.innerText = 'Erro ao carregar os dados';
+      }
+    } catch (error) {
+      console.error("Erro na requisição da API:", error);
+      statusEl.innerText = 'Erro ao carregar os dados';
+    }
+  }
+
+  // Carregar dados imediatamente (ou ao concluir DOM)
+  document.addEventListener('DOMContentLoaded', carregarDadosAPI);
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    carregarDadosAPI();
+  }
+
+  // Recarregar os dados automaticamente ao voltar para a aba
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      carregarDadosAPI();
+    }
+  });
+
+  function processarEExibir(dados) {
+    const totalSaidas = dados.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
+    document.getElementById('totalSaidas').innerText = formatarMoeda(totalSaidas);
+
+    // Cores dos gráficos usando a paleta
+    const palette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+
+    criarGraficoBarra(dados, 'tipo', 'graficoTipo', false, '#3b82f6');
+    criarGraficoBarra(dados, 'instituição', 'graficoInstituicao', false, '#22c55e');
+    criarGraficoBarra(dados, 'descrição', 'graficoDescricao', true, '#3b82f6');
+
+    calcularProjecao(dados);
+    preencherTabela(dados);
+  }
+
+  function calcularProjecao(saidas) {
+    let totalFuturo = 0;
+    let totalM1 = 0;
+    const mapaFuturo = {};
+    const mapaM1 = {};
+
+    saidas.forEach(d => {
+      const parcelaStr = String(d.parcela || "");
+      if (!parcelaStr.includes('/')) return;
+
+      const partes = parcelaStr.split('/');
+      const atual = parseInt(partes[0]);
+      const total = parseInt(partes[1]);
+      const valorUnitario = parseFloat(d.valor) || 0;
+      const inst = d['instituição'] || "Outros";
+
+      if (total > atual) {
+        totalM1 += valorUnitario;
+        mapaM1[inst] = (mapaM1[inst] || 0) + valorUnitario;
+
+        const restantes = total - atual;
+        const valorRemanescente = restantes * valorUnitario;
+        totalFuturo += valorRemanescente;
+        mapaFuturo[inst] = (mapaFuturo[inst] || 0) + valorRemanescente;
+      }
+    });
+
+    document.getElementById('totalProximoMes').innerText = formatarMoeda(totalM1);
+    document.getElementById('totalParcelasFuturas').innerText = formatarMoeda(totalFuturo);
+
+    renderizarPizza('graficoParcelas', mapaFuturo, 'pie');
+    renderizarPizza('graficoM1', mapaM1, 'doughnut');
+  }
+
+  function renderizarPizza(canvasId, mapa, tipo) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (charts[canvasId]) charts[canvasId].destroy();
+
+    const labels = Object.keys(mapa);
+    if (labels.length === 0) return;
+
+    charts[canvasId] = new Chart(ctx, {
+      type: tipo,
+      data: {
+        labels: labels,
+        datasets: [{ 
+          data: Object.values(mapa), 
+          backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+          borderColor: '#1e293b',
+          borderWidth: 2
+        }]
+      },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: { 
+          legend: { position: 'bottom', labels: { color: '#f8fafc', boxWidth: 10, font: { size: 10 } } } 
+        }
+      }
+    });
+  }
+
+  function criarGraficoBarra(dados, coluna, canvasId, top10, color) {
+    const mapa = {};
+    dados.forEach(d => {
+      const chave = d[coluna] || "Outros";
+      mapa[chave] = (mapa[chave] || 0) + (parseFloat(d.valor) || 0);
+    });
+
+    let labels = Object.keys(mapa);
+    let valores = Object.values(mapa);
+
+    if (top10) {
+      const combinado = labels.map((l, i) => ({ label: l, valor: valores[i] })).sort((a, b) => b.valor - a.valor).slice(0, 10);
+      labels = combinado.map(i => i.label);
+      valores = combinado.map(i => i.valor);
+    }
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (charts[canvasId]) charts[canvasId].destroy();
+
+    charts[canvasId] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{ data: valores, backgroundColor: color, borderRadius: 4 }]
+      },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+          x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+        }
+      }
+    });
+  }
+
+  function popularFiltros(dados) {
+    const tipos = [...new Set(dados.map(d => d.tipo))].filter(Boolean).sort();
+    const insts = [...new Set(dados.map(d => d['instituição']))].filter(Boolean).sort();
+    const selectTipo = document.getElementById('filterTipo');
+    const selectInst = document.getElementById('filterInst');
+    selectTipo.innerHTML = '<option value="">Todos os Tipos</option>';
+    selectInst.innerHTML = '<option value="">Todas Instituições</option>';
+    tipos.forEach(t => selectTipo.innerHTML += `<option value="${t}">${t}</option>`);
+    insts.forEach(i => selectInst.innerHTML += `<option value="${i}">${i}</option>`);
+  }
+
+  function aplicarFiltros() {
+    const busca = document.getElementById('searchDesc').value.toLowerCase();
+    const tipo = document.getElementById('filterTipo').value;
+    const inst = document.getElementById('filterInst').value;
+    const filtrados = dadosGlobais.filter(d => {
+      const matchBusca = String(d.descrição || "").toLowerCase().includes(busca);
+      const matchTipo = tipo === "" || d.tipo === tipo;
+      const matchInst = inst === "" || d['instituição'] === inst;
+      return matchBusca && matchTipo && matchInst;
+    });
+    preencherTabela(filtrados);
+  }
+
+  function preencherTabela(dados) {
+    const tbody = document.getElementById("tbodyGastos");
+    tbody.innerHTML = "";
+    dados.sort((a, b) => (parseFloat(b.valor) || 0) - (parseFloat(a.valor) || 0));
+    dados.forEach(d => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${d.descrição || '-'}</td>
+        <td style="color: #ef4444; font-weight: bold;">${formatarMoeda(parseFloat(d.valor) || 0)}</td>
+        <td>${d.parcela || '-'}</td>
+        <td>${d['forma pagamento'] || d['pagamento'] || '-'}</td>
+        <td>${d['instituição'] || '-'}</td>
+        <td>${d.tipo || '-'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function formatarMoeda(valor) {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+</script>
+
+</body>
+</html>

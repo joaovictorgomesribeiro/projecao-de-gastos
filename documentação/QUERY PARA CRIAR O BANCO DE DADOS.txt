@@ -1,0 +1,11 @@
+CREATE TABLE gastos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    descricao VARCHAR(255),
+    valor DECIMAL(10,2),
+    parcela VARCHAR(20),
+    pagamento VARCHAR(100),
+    instituicao VARCHAR(100),
+    tipo VARCHAR(100),
+    classificacao VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
