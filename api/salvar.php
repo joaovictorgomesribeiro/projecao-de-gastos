@@ -32,6 +32,7 @@ $parcela = $_POST['parcela'] ?? null;
 $pagamento = $_POST['forma_pagamento'] ?? null; // Match com o "name" do input do frontend
 $instituicao = $_POST['instituicao'] ?? null;
 $tipo = $_POST['tipo'] ?? null;
+$data_gasto = $_POST['data'] ?? date('Y-m-d'); // Default para hoje se não enviado
 
 // Validação dos nossos campos obrigatórios (front e back alinhados)
 if (empty($descricao) || empty($valor) || empty($classificacao)) {
@@ -42,8 +43,8 @@ if (empty($descricao) || empty($valor) || empty($classificacao)) {
 
 try {
     // Prepara o SQL (usar bindings evira que o backend sofra SQL Injection)
-    $sql = "INSERT INTO gastos (descricao, valor, parcela, pagamento, instituicao, tipo, classificacao) 
-            VALUES (:descricao, :valor, :parcela, :pagamento, :instituicao, :tipo, :classificacao)";
+    $sql = "INSERT INTO gastos (descricao, valor, parcela, pagamento, instituicao, tipo, classificacao, data) 
+            VALUES (:descricao, :valor, :parcela, :pagamento, :instituicao, :tipo, :classificacao, :data)";
             
     $stmt = $pdo->prepare($sql);
     
@@ -55,6 +56,7 @@ try {
     $stmt->bindParam(':instituicao', $instituicao);
     $stmt->bindParam(':tipo', $tipo);
     $stmt->bindParam(':classificacao', $classificacao);
+    $stmt->bindParam(':data', $data_gasto);
     
     // Finalmente, executa!
     if ($stmt->execute()) {

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,9 +32,11 @@
             color: var(--text-color);
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* Para scroll natural no mobile */
+            align-items: flex-start;
+            /* Para scroll natural no mobile */
             min-height: 100vh;
-            padding: 24px 16px; /* Padding geral para desgrudar da tela */
+            padding: 24px 16px;
+            /* Padding geral para desgrudar da tela */
         }
 
         /* Container Principal */
@@ -58,7 +61,8 @@
         /* Card do formulário */
         .card {
             background-color: var(--card-bg);
-            border-radius: 16px; /* Bordas arredondadas e modernas */
+            border-radius: 16px;
+            /* Bordas arredondadas e modernas */
             padding: 24px;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             border: 1px solid var(--border-color);
@@ -84,15 +88,18 @@
         }
 
         /* Inputs e target táctil */
-        input, select {
+        input,
+        select {
             width: 100%;
-            min-height: 48px; /* Touch target superior a 44px */
+            min-height: 48px;
+            /* Touch target superior a 44px */
             padding: 12px 16px;
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
             border-radius: 10px;
             color: var(--text-color);
-            font-size: 16px; /* 16px para evitar auto-zoom no iOS */
+            font-size: 16px;
+            /* 16px para evitar auto-zoom no iOS */
             outline: none;
             transition: all 0.2s ease;
         }
@@ -102,7 +109,8 @@
         }
 
         /* Focus visual state */
-        input:focus, select:focus {
+        input:focus,
+        select:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
         }
@@ -160,8 +168,15 @@
 
         /* Animação suave para exibir mensagem */
         @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Apenas um ajuste visual para as opções do select nos navegadores que suportam */
@@ -171,6 +186,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <div class="container">
@@ -183,10 +199,15 @@
 
         <div class="card">
             <form id="cadastroForm">
-                
+
                 <div class="input-group">
                     <label for="descricao">Descrição *</label>
                     <input type="text" id="descricao" name="descricao" placeholder="Ex: Supermercado, Aluguel" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="data">Data do Lançamento *</label>
+                    <input type="date" id="data" name="data" required>
                 </div>
 
                 <div class="input-group">
@@ -246,10 +267,17 @@
             const form = document.getElementById('cadastroForm');
             const feedbackMessage = document.getElementById('feedbackMessage');
             const submitBtn = document.getElementById('submitBtn');
+            const dataInput = document.getElementById('data');
 
-            form.addEventListener('submit', async function(e) {
+            // Preencher com a data de hoje
+            if (dataInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dataInput.value = today;
+            }
+
+            form.addEventListener('submit', async function (e) {
                 // 1. Prevenir reload da página
-                e.preventDefault(); 
+                e.preventDefault();
 
                 // Feedback visual de carregamento no botão
                 const btnOriginalText = submitBtn.innerText;
@@ -286,7 +314,7 @@
                     submitBtn.innerText = btnOriginalText;
                     submitBtn.disabled = false;
                     submitBtn.style.opacity = '1';
-                    
+
                     // Rolar pro topo de maneira suave no mobile caso não consiga ver o alerta
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
@@ -296,7 +324,7 @@
             function mostrarFeedback(texto, tipo) {
                 feedbackMessage.innerText = texto;
                 feedbackMessage.className = `feedback ${tipo}`;
-                
+
                 // Ocultar automaticamente após 4 segundos em caso de sucesso
                 if (tipo === 'success') {
                     setTimeout(() => {
@@ -312,4 +340,5 @@
         });
     </script>
 </body>
+
 </html>

@@ -22,7 +22,7 @@ require_once __DIR__ . '/../config/database.php';
 
 try {
     // Buscamos tudo da tabela gastos ordernados pela data (com o mais novo acima)
-    $sql = "SELECT * FROM gastos ORDER BY created_at DESC";
+    $sql = "SELECT * FROM gastos ORDER BY data DESC, created_at DESC";
     $stmt = $pdo->query($sql);
     $resultados = $stmt->fetchAll();
 

@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>V3 - Projeção de Gastos</title>
+  <title>Dashboard Financeiro</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -133,15 +133,31 @@
 <body>
 
 <header>
-  <h1>📊 Projeção de Gastos</h1>
+  <h1>📊 Dashboard Financeiro</h1>
   <div id="loadingStatus" style="color: #f59e0b; font-weight: bold; font-size: 14px;"></div>
 </header>
 
 <div class="container">
 
   <div class="card">
-    <h3>A Pagar (Mês Atual)</h3>
+    <h3>Entradas (Receitas)</h3>
+    <div class="kpi" id="totalEntradas" style="color: #22c55e;">R$ 0,00</div>
+  </div>
+
+  <div class="card">
+    <h3>Saídas (Mês Atual)</h3>
     <div class="kpi" id="totalSaidas" style="color: #ef4444;">R$ 0,00</div>
+  </div>
+
+  <div class="card">
+    <h3>Saldo Atual</h3>
+    <div class="kpi" id="saldoAtual" style="color: #3b82f6;">R$ 0,00</div>
+  </div>
+
+  <div class="card">
+    <h3>Saúde Financeira</h3>
+    <div class="kpi" id="saudeFinanceira" style="font-size: 24px; color: #94a3b8;">-</div>
+    <small style="color: #94a3b8; margin-top: 5px;">Ideal: máximo 80% comprometido</small>
   </div>
 
   <div class="card">
@@ -173,7 +189,7 @@
   </div>
 
   <div class="card full-width">
-    <h3>Lista Detalhada de Gastos</h3>
+    <h3>Lista Detalhada de Lançamentos</h3>
 
     <div class="filter-bar">
       <input type="text" id="searchDesc" placeholder="🔎 Buscar por descrição..." onkeyup="aplicarFiltros()">
@@ -189,6 +205,8 @@
       <table id="tabelaGastos">
         <thead>
           <tr>
+            <th style="text-align: center;">Ações</th>
+            <th>Data</th>
             <th>Descrição</th>
             <th>Valor</th>
             <th>Parcela</th>
@@ -219,6 +237,8 @@
       if (json.sucesso) {
         dadosGlobais = json.dados.map(item => {
           return {
+            'id': item.id,
+            'data': item.data,
             'descrição': item.descricao || item.descrição,
             'valor': item.valor,
             'parcela': item.parcela,
@@ -227,7 +247,7 @@
             'tipo': item.tipo,
             'classificação': item.classificacao || item.classificação
           };
-        }).filter(d => ["saída", "saida"].includes(String(d['classificação'] || "").toLowerCase()));
+        });
 
         popularFiltros(dadosGlobais);
         processarEExibir(dadosGlobais);
@@ -255,17 +275,40 @@
   });
 
   function processarEExibir(dados) {
-    const totalSaidas = dados.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
+    const entradas = dados.filter(d => String(d.classificação || "").toLowerCase() === "entrada");
+    const saidas = dados.filter(d => ["saída", "saida"].includes(String(d.classificação || "").toLowerCase()));
+
+    const totalEntradas = entradas.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
+    const totalSaidas = saidas.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
+    const saldo = totalEntradas - totalSaidas;
+
+    document.getElementById('totalEntradas').innerText = formatarMoeda(totalEntradas);
     document.getElementById('totalSaidas').innerText = formatarMoeda(totalSaidas);
+    document.getElementById('saldoAtual').innerText = formatarMoeda(saldo);
+    document.getElementById('saldoAtual').style.color = saldo >= 0 ? '#3b82f6' : '#ef4444';
 
-    // Cores dos gráficos usando a paleta
-    const palette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+    // Saúde Financeira
+    let saudeEl = document.getElementById('saudeFinanceira');
+    if (totalEntradas > 0) {
+        let saudePercentual = (totalSaidas / totalEntradas) * 100;
+        saudeEl.innerText = `${saudePercentual.toFixed(1)}% comprometido`;
+        if (saudePercentual <= 80) {
+            saudeEl.style.color = '#22c55e'; // verde
+        } else if (saudePercentual <= 100) {
+            saudeEl.style.color = '#f59e0b'; // amarelo
+        } else {
+            saudeEl.style.color = '#ef4444'; // vermelho
+        }
+    } else {
+        saudeEl.innerText = 'Sem receita';
+        saudeEl.style.color = '#94a3b8';
+    }
 
-    criarGraficoBarra(dados, 'tipo', 'graficoTipo', false, '#3b82f6');
-    criarGraficoBarra(dados, 'instituição', 'graficoInstituicao', false, '#22c55e');
-    criarGraficoBarra(dados, 'descrição', 'graficoDescricao', true, '#3b82f6');
+    criarGraficoBarra(saidas, 'tipo', 'graficoTipo', false, '#3b82f6');
+    criarGraficoBarra(saidas, 'instituição', 'graficoInstituicao', false, '#22c55e');
+    criarGraficoBarra(saidas, 'descrição', 'graficoDescricao', true, '#3b82f6');
 
-    calcularProjecao(dados);
+    calcularProjecao(saidas);
     preencherTabela(dados);
   }
 
@@ -392,15 +435,60 @@
     preencherTabela(filtrados);
   }
 
+  function formatarDataBrasileira(dataIso) {
+    if (!dataIso) return '-';
+    const partes = dataIso.split('-');
+    if (partes.length !== 3) return dataIso;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
+  async function deletarGasto(id) {
+    if (confirm("Tem certeza que deseja excluir esse gasto?")) {
+      try {
+        const response = await fetch('http://localhost/projecao-gastos/api/deletar.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ id: id })
+        });
+        const result = await response.json();
+        if (result.sucesso) {
+          carregarDadosAPI();
+        } else {
+          alert("Erro ao excluir: " + (result.erro || "Desconhecido"));
+        }
+      } catch (error) {
+        console.error("Falha ao excluir:", error);
+        alert("Erro na requisição ao excluir.");
+      }
+    }
+  }
+
   function preencherTabela(dados) {
     const tbody = document.getElementById("tbodyGastos");
     tbody.innerHTML = "";
-    dados.sort((a, b) => (parseFloat(b.valor) || 0) - (parseFloat(a.valor) || 0));
+    
+    dados.sort((a, b) => {
+      const dataA = a.data ? new Date(a.data).getTime() : 0;
+      const dataB = b.data ? new Date(b.data).getTime() : 0;
+      if (dataA !== dataB) {
+        return dataB - dataA;
+      }
+      return (parseFloat(b.valor) || 0) - (parseFloat(a.valor) || 0);
+    });
+
     dados.forEach(d => {
+      const isEntrada = String(d.classificação || "").toLowerCase() === "entrada";
+      const corValor = isEntrada ? "#22c55e" : "#ef4444";
+      const sinal = isEntrada ? "+" : "-";
+
       const tr = document.createElement("tr");
       tr.innerHTML = `
+        <td style="text-align: center;">
+          <button onclick="deletarGasto(${d.id})" style="background: none; border: none; cursor: pointer; font-size: 16px;" title="Excluir">🗑️</button>
+        </td>
+        <td>${formatarDataBrasileira(d.data)}</td>
         <td>${d.descrição || '-'}</td>
-        <td style="color: #ef4444; font-weight: bold;">${formatarMoeda(parseFloat(d.valor) || 0)}</td>
+        <td style="color: ${corValor}; font-weight: bold;">${sinal} ${formatarMoeda(parseFloat(d.valor) || 0)}</td>
         <td>${d.parcela || '-'}</td>
         <td>${d['forma pagamento'] || d['pagamento'] || '-'}</td>
         <td>${d['instituição'] || '-'}</td>
